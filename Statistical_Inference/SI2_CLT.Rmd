@@ -1,0 +1,154 @@
+---
+keep_md: yes
+output: 
+  pdf_document:
+    fig_height: 4
+    fig_width: 7
+    toc_depth: 0
+  html_document: default
+geometry: "top=1cm, bottom=1cm, left=1cm, right=1cm"
+---
+#Statistical Inference-ToothGrowth
+Overview
+====================
+This project investigates the effect of Vitamin C on toothgrowth. The response is the length of odontoblasts (cells responsible for tooth growth) in 60 guinea pigs. Each animal received one of three dose levels of vitamin C (0.5, 1, and 2 mg/day) by one of two delivery methods, (orange juice or ascorbic acid (a form of vitamin C and coded as VC).  The objective of of the project is to determine if the following: a) If Vitamin C has any effect on toothgrowth; b) Which of the 2 sources of Vitamin C- Orange Juice, Ascorbic acid has the most effect; c) What dose has the most impact?     
+**Environment**     
+1. OS: Windows 10
+2. Tool: R version 3.2.3; R Studio version 0.99.491; R packages used: knitr, ggplot2, gridextra, scale, dplyr, plyr;Publishing tool: RPubs, PDF
+4. Data: ToothGrowth dataset in R
+6. Analyst: Uma Venkataramani; Date of Analysis: Feb 2016
+
+**Method applied for this analysis**: a) Ascertain the distribution of the data to determine the tests to use.; b) Develop a hypothesis. There are 3 hypothesis that were developed for this analysis.; c) Determine tests to verify the hypothesis. Typically T-Tests and graphs were used to assess the results of the test.; d) Infer the results from the tests.                
+
+Exploratory Analysis       
+====================
+**Assess the distribution of the data- Is the distrubtion normal?**
+```{r echo=FALSE,message=FALSE, warning=FALSE,comment=" ",tidy=TRUE,strip.white=FALSE,collapse=TRUE}
+#libraries
+    library(knitr)
+    library(ggplot2)
+    library(plyr)
+    library(dplyr)
+    library(gridExtra)
+    library(Scale)
+```
+
+```{r echo=TRUE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+#Load data
+    data("ToothGrowth")
+```
+
+```{r echo=FALSE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+    h0<-list() 
+    h0[[1]]=shapiro.test(ToothGrowth$len)
+    names(h0)=c("Values")
+    t(sapply(h0, function(h0) {
+      c(h0$statistic,p.value = h0$p.value)}))
+    str(ToothGrowth)
+    plot(density(ToothGrowth$len),main="Plot of ToothGrowth")
+    rect(par("usr")[1],par("usr")[3],par("usr")[2],par("usr")[4],col = "#663366")
+    polygon(density(ToothGrowth$len),col="#99FF66")
+```
+
+**Assessment:**
+Given the results of the Shapiro Wilk test where the p-value of the sample (.1091) is greater than alpha of 0.03257 and a bell-curve with a slight skew to the right, we cannot reject the hypothesis that the distribution is normal.  
+
+**Hypothesis 1: Ascorbic acid has a better impact on teeth growth than orange juice**       
+*Tests:*    
+1) Perform test to determine if there a relationship between Vitamin C supplement and teeth growth       
+2) Perform test to determine if there is a difference in means of the both types of Vitamin C supplements- Orange juice and Ascorbic acid  
+```{r echo=FALSE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+#Determining the mean of the toothgrowth by supplement administered
+    smean=ddply(ToothGrowth,.(supp),summarise,Supplement_mean=mean(len))
+    suppmean=mean(smean$Supplement_mean)
+    smean$Overall_mean=suppmean
+    smean
+    h1tt <- list()
+```
+
+```{r echo=TRUE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+#Determining the confidence interval using t-test
+    h1tt[[1]] <- t.test(smean$Supplement_mean,paired=FALSE,var.equal=FALSE,na.rm=TRUE,conf.level = .65)
+```
+
+```{r echo=FALSE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+    names(h1tt)=c("Values")
+    cat("The results of the one sample two sided T-test at a confidence level of 99% is as follow")
+      t(sapply(h1tt, function(h1tt) {
+      c(value=h1tt$statistic,h1tt$estimate[1],ci.lower = h1tt$conf.int[1], ci.upper = h1tt$conf.int[2],p.value = h1tt$p.value)}))
+    smean=ddply(ToothGrowth,.(supp,dose),summarise,Supplement_mean=mean(len))
+    ojmean=subset(smean, supp=="OJ")
+    vcmean=subset(smean,supp=="VC")
+    h2tt <- list()
+```
+
+```{r echo=TRUE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+    h2tt[[1]] <- t.test(ojmean$Supplement_mean,vcmean$Supplement_mean,paired=TRUE,var.equal=FALSE,na.rm=TRUE,conf.level = .99)
+```
+
+```{r echo=FALSE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+    names(h2tt)=c("Values")
+    cat("The results of the two samples paired T-test at a confidence level of 99% is as follow")
+      t(sapply(h2tt, function(h2tt) {
+      c(value=h2tt$statistic,h2tt$estimate[1],ci.lower = h2tt$conf.int[1], ci.upper = h2tt$conf.int[2],p.value = h2tt$p.value)}))
+#Comparing the effects of Orange juice to Vitamin C Supplement in the context of toothgrowth
+    x=ggplot(smean,aes(x=dose,y=Supplement_mean,fill=supp,ymax = max(Supplement_mean)))+facet_grid(.~supp)
+    x=x+scale_fill_manual(values=c("#CC66CC","#CCFF33"))+ theme(panel.background = element_rect(fill = "#333333"))
+    x=x+geom_bar(stat="identity")+ geom_text(aes(label = Supplement_mean),size=3,hjust=0.5,vjust=3,position="stack")
+    x=x+xlab("Supplement Dose")+ ylab("Tooth Length")+ ggtitle("Impact of Supplements on Teeth growth")
+    x 
+```
+
+**Assessment:**
+Given that the mean of both Orange juice and ascorbic acid is within the confidence interval at 99% confidence interval, proves that there is a positive correlation between Vitamin C and teeth growth. As we can see the mean of tooth growth relative to Orange juice and ascorbic acid is very close to the overall mean. The results of the T-test suggests that there is a difference in the impact on teeth growth between the 2 types of Vitamin C sources. The difference in the means of both sources is not equal to zero indicating that one source simulates the teeth growth better than the other. In this case, it seems that orange juice seems to have a better impact on toothgrowth than ascorbic acid.This lets us into verifying if orange juice consistently improves tooth growth at all levels of the dose.  
+
+**Hypothesis 2: Orange juice consistently improves tooth growth at all levels of supplement doses**
+
+*Tests:*   
+1) Perform test to determine if there is any difference in the means of the doses (0.5, 1 & 2 mg/day) of the two types of supplements-orange juice and ascorbic acid used in this study.    
+2) Perform test to determine the consistency of the improvement  
+```{r echo=FALSE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+    dose0.5=subset(ToothGrowth,dose=="0.5")
+    dose1=subset(ToothGrowth,dose=="1")
+    dose2=subset(ToothGrowth,dose=="2")
+```
+
+```{r echo=TRUE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+    h3tt<-list()
+    h3tt[[1]]=t.test(dose0.5$len,dose1$len,alternative="less",paired=FALSE,var.equal=FALSE,conf.level = .99)
+```
+
+```{r echo=FALSE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+    names(h3tt)=c("0.5-1(>)")
+    h3=sapply(h3tt, function(h3tt) {
+      c(value=h3tt$statistic,h3tt$estimate[1],h3tt$estimate[2],ci.lower = h3tt$conf.int[1], ci.upper = h3tt$conf.int[2],p.value = h3tt$p.value)})
+    h4tt<-list()
+```
+
+```{r echo=TRUE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+    h4tt[[1]]=t.test(dose2$len,dose1$len,alternative="greater",paired=FALSE,var.equal=FALSE,conf.level = .99)
+```
+
+```{r echo=FALSE,tidy=TRUE,comment=" ",strip.white=FALSE,collapse=TRUE}
+    names(h4tt)=c("2-1(<)")
+    cat("Two sample Welch T.Test results for dosage levels 2 & 1 at 99% confidence interval")
+    h4=sapply(h4tt, function(h4tt) {
+      c(value=h4tt$statistic,h4tt$estimate[1],h4tt$estimate[2],ci.lower = h4tt$conf.int[1], ci.upper = h4tt$conf.int[2],p.value = h4tt$p.value)})
+
+    h5=cbind(h3,h4)
+    t(h5)
+    y=ggplot(ToothGrowth, aes(x = supp, y = len),outlier.colour = "white")+facet_wrap(~ dose)
+    y=y+geom_boxplot(aes(fill = supp),color="#CC9999",varwidth=TRUE)+scale_fill_manual(values=c("#990066","#CCFF66"))
+    y=y+theme(panel.background = element_rect(fill = "#333333"),panel.grid.major = element_blank(),panel.grid.minor = element_blank())
+    y=y+xlab("Supplement")+ylab("Tooth Length")+ggtitle("Impact of Supplement Dosage on Teeth growth")
+    y
+```
+
+**Assessment:**
+
+**At 0.5 mg/day dosage:** Orange juice has a higher upper & lower whiskers, a higher median and a higher interquartile range than those for Ascorbic acid. But the results or Orange juice appear more dispersed from the median than those of Ascorbic acid. Though the response seem more consistent with Ascorbic acid, Orange juice had a more positive impact on teethgrowth.  
+**At 1 mg/day dosage:** Orange juice has a higher upper whisker, a higher median and a higher interquartile range than those for Ascorbic acid. The dispersion of results for Orange juice appear much closer to the median but lesser tighter than that of Ascorbic acid. It also seems that the lower whisker of Orange juice seems to have dipped and is much further away from the median. Meanwhile Ascorbic acid seems to have more postive impact on teethgrowth at this dosage than at 0.5mg/day indicated by a much tigher dispersion, higher whiskers, median and an outlier that far exceeds the group. However, Orange juice still seems to have a greater positive impact than Ascorbic dosage at 1 mg/day dosage.  
+**At 2 mg/day dosage:** Orange juice has a much tighers dispersion, but only a marginal increase in a positive impact on teeth growth even with an outlier that far exceeds the group. Postitive impact of Ascorbic acid on teethgrowth on the other hand seems to have a improved significantly as can been seen from the higher whisker levels, interquartile levels and the median. But the dispersion seems to have increased at the 2 mg/day dosage than the 1 mg/day. But is still close to tightness seen at 0.5 mg/day.   
+
+**Summary:**
+To conclude, if Vitamic C must be taken as a supplement to help teeth growth, then orange juice at 0.5mg per day would be  sufficient to help teeth grow. However, those who do not respond to orange juice may take ascorbic acid at 2 mg/day as a supplement.
